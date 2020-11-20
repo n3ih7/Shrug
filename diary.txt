@@ -1,6 +1,4 @@
-COMP(2041|9044) 20T2 Assignment 1: shrug, Shrug - z5171691
-
-diary.txt
+# diary.txt
 Date        Start     Stop      Activity                                               Comments
 
 28/06/2020  11.50 pm  3.51 am   shrug-init and error check                             passed subset0_[12]
@@ -22,3 +20,5 @@ Date        Start     Stop      Activity                                        
 14/07/2020  2.39 pm   4.34 pm   DEBUGGING for rm and finished status                   passed subset1
 
 15/07/2020  11.15 am  12.55 pm  writing test files and comments                        finished subset0 and subset1
+
+# Test suite not uploaded
