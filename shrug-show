@@ -1,0 +1,53 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ -z "$1" ]; then
+    echo "usage: shrug-show <commit>:<filename>"
+    exit 1
+else 
+    flag=`echo $1 | egrep ':'`
+    if [ -z "$flag" ]; then
+        # input invaild if does not contain colon
+        echo "shrug-show: error: invalid object $1"
+        exit 1
+    else
+    requested_commit_seq=`echo $1 | cut -d':' -f1`
+    requested_filename=`echo $1 | cut -d':' -f2`
+    fi
+
+    if [ -z "$requested_commit_seq" ]; then
+        # if no commit_seq then look for file in staged space
+        # search current index using requested_filename for file real name(sha1sum-ed)
+        requested_filename_sha1sum=`cat .shrug/.git/index | egrep " $requested_filename$" | cut -d' ' -f1`
+        if [ -z "$requested_filename_sha1sum" ]; then
+            echo "shrug-show: error: '$requested_filename' not found in index"
+            exit 1
+        else
+            cat ".shrug/.git/objects/$requested_filename_sha1sum"
+            exit 0
+        fi
+    else
+        # check if requested_commit_seq ever exists
+        commit_check_flag=`cat $root_folder/.git/COMMIT_EDITMSG | egrep "^$requested_commit_seq "`
+        if [ -z "$commit_check_flag" ]; then
+            echo "shrug-show: error: unknown commit '$requested_commit_seq'"
+            exit 1
+        else
+            # invaild file if requested_commit_seq exists but no request_filename input
+            if [ -z "$requested_filename" ]; then
+                echo "shrug-show: error: invalid filename ''"
+            else
+                # search current index using requested_filename for file real name(sha1sum-ed)
+                requested_filename_sha1sum=`cat .shrug/.git//objects/pack/pack-$requested_commit_seq.idx | egrep " $requested_filename$" | cut -d' ' -f1`
+                if [ -z "$requested_filename_sha1sum" ]; then
+                    echo "shrug-show: error: '$requested_filename' not found in commit $requested_commit_seq"
+                    exit 1
+                else
+                    cat "$root_folder/.git/objects/pack/pack-$requested_commit_seq.pack/$requested_filename_sha1sum"
+                    exit 0
+                fi
+            fi
+        fi
+    fi
+fi 

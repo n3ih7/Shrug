@@ -1,0 +1,46 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ ! -d $root_folder ]; then
+    echo 'shrug-add: error: no .shrug directory containing shrug repository exists'
+    exit 1
+else
+    touch "$root_folder/.git/index"
+
+    for i in $@
+    do
+        # check if all files in argv are exist, if not, would exit
+        # instead of adding first few exist files then found one file behind not exist and exit which would cause workstream conflict
+        if [ ! -f "$i" ]; then
+            flag=`cat .shrug/.git/index | egrep " $i$"`
+            if [ "$flag" = '' ]; then
+                echo "shrug-add: error: can not open '$i'"
+                exit 1
+            else 
+                sed -i -e "/$flag/d" ".shrug/.git/index" > /dev/null
+            fi
+        fi
+    done
+
+    for filename in $@
+    do
+        # if not exit above
+        # use sha1sum with the mix of filename and content for filename generation to keep filename unique and avoid ambiguity
+        if [ -f "$filename" ]; then
+            sha1sum_content=`cat $filename`
+            filename_sha1sum=`echo $filename$sha1sum_content | sha1sum | cut -d' ' -f1`
+            if [ ! -e "$root_folder/.git/objects/$filename_sha1sum" ]; then
+                cp -n $filename "$root_folder/.git/objects/$filename_sha1sum"
+            fi
+            
+            # then keep the sha1sum result(staged filename) and original filename in index file
+            r=`cat "$root_folder/.git/index" | egrep " $filename"`
+            if [ -z "$r" ]; then
+                echo "$filename_sha1sum $filename" >> "$root_folder/.git/index"
+            else
+                sed -i -e "s/$r/$filename_sha1sum $filename/g" "$root_folder/.git/index"
+            fi
+        fi
+    done
+fi

@@ -1,0 +1,114 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ ! -d $root_folder ]; then
+    echo 'shrug-add: error: no .shrug directory containing shrug repository exists'
+    exit 1
+else
+    # to get the last commit sequence if not exist touch empty COMMIT_EDITMSG file
+    if [ -s "$root_folder/.git/COMMIT_EDITMSG" ]; then
+        count=`cat .shrug/.git/COMMIT_EDITMSG | head -1 | cut -d' ' -f1`
+        next=`expr $count + 1` 
+    else
+        touch "$root_folder/.git/COMMIT_EDITMSG"
+        next=0
+    fi
+
+    if [ "$1" = '-a' ]; then
+        log=$3
+        # to get the filenames(sha1sum-ed) that already in index
+        commit_file_list=`cat $root_folder/.git/index | cut -d' ' -f1 | tr '\n' ' '`
+        # to get the original filenames that already in index
+        need_to_be_added_file_list=`cat $root_folder/.git/index | cut -d' ' -f2 | tr '\n' ' '`
+        # a round for add them to staged space
+        for i in $need_to_be_added_file_list; do
+            shrug-add $i
+        done
+        if [ $next -eq 0 ]; then
+            # for the below part comments, please read from line 73
+            cp "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$next.idx"
+            mkdir -p $root_folder/.git/objects/pack/pack-$next.pack
+
+            commit_file_list=`cat $root_folder/.git/index | cut -d' ' -f1 | tr '\n' ' '`
+            for v in $commit_file_list; do
+                cp "$root_folder/.git/objects/$v" "$root_folder/.git/objects/pack/pack-$next.pack"
+            done
+
+            touch $root_folder/.git/info/refs
+            echo "$next refs/heads/master" >> $root_folder/.git/info/refs
+
+            (echo "$next $log" && cat $root_folder/.git/COMMIT_EDITMSG) > $root_folder/.git/tep && mv $root_folder/.git/tep $root_folder/.git/COMMIT_EDITMSG
+            echo "Committed as commit $next"
+            exit 0
+        else
+            check_seq=`expr $next - 1`
+            if diff -q "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$check_seq.idx" > /dev/null 
+            then
+                echo "nothing to commit"
+                exit 0
+            else
+                cp "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$next.idx"
+                mkdir -p $root_folder/.git/objects/pack/pack-$next.pack
+
+                commit_file_list=`cat $root_folder/.git/index | cut -d' ' -f1 | tr '\n' ' '`
+                for v in $commit_file_list; do
+                    cp "$root_folder/.git/objects/$v" "$root_folder/.git/objects/pack/pack-$next.pack"
+                done
+
+                touch $root_folder/.git/info/refs
+                echo "$next refs/heads/master" >> $root_folder/.git/info/refs
+
+                (echo "$next $log" && cat $root_folder/.git/COMMIT_EDITMSG) > $root_folder/.git/tep && mv $root_folder/.git/tep $root_folder/.git/COMMIT_EDITMSG
+                echo "Committed as commit $next"
+                exit 0
+            fi
+        fi
+    else 
+        # echo $1
+        log=$2
+        # from index to get all filenames of files need to be commited(sha1sum-ed filename)
+        commit_file_list=`cat $root_folder/.git/index | cut -d' ' -f1 | tr '\n' ' '`
+        if [ $next -eq 0 ]; then
+            # if this is the first commit
+            # then create folder format like 2041 shrug and cp files to corresponding folder(pack)
+            cp "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$next.idx"
+            mkdir -p $root_folder/.git/objects/pack/pack-$next.pack
+            for v in $commit_file_list; do
+                cp "$root_folder/.git/objects/$v" "$root_folder/.git/objects/pack/pack-$next.pack"
+            done
+
+            # for future branch use, although didnot write that part
+            touch $root_folder/.git/info/refs
+            echo "$next refs/heads/master" >> $root_folder/.git/info/refs
+
+            # for the first line log instead of add new log in the last line 
+            (echo "$next $log" && cat $root_folder/.git/COMMIT_EDITMSG) > $root_folder/.git/tep && mv $root_folder/.git/tep $root_folder/.git/COMMIT_EDITMSG
+            echo "Committed as commit $next"
+            exit 0
+        else
+            # if this is not the first commit
+            # then diff last commit index with current staged index
+            check_seq=`expr $next - 1`
+            if diff -q "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$check_seq.idx" > /dev/null 
+            then
+                # if there is no difference
+                echo "nothing to commit"
+                exit 0
+            else
+                cp "$root_folder/.git/index" "$root_folder/.git/objects/pack/pack-$next.idx"
+                mkdir -p $root_folder/.git/objects/pack/pack-$next.pack
+                for v in $commit_file_list; do
+                    cp "$root_folder/.git/objects/$v" "$root_folder/.git/objects/pack/pack-$next.pack"
+                done
+
+                touch $root_folder/.git/info/refs
+                echo "$next refs/heads/master" >> $root_folder/.git/info/refs
+
+                (echo "$next $log" && cat $root_folder/.git/COMMIT_EDITMSG) > $root_folder/.git/tep && mv $root_folder/.git/tep $root_folder/.git/COMMIT_EDITMSG
+                echo "Committed as commit $next"
+                exit 0
+            fi
+        fi
+    fi
+fi

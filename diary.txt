@@ -1,0 +1,24 @@
+COMP(2041|9044) 20T2 Assignment 1: shrug, Shrug - z5171691
+
+diary.txt
+Date        Start     Stop      Activity                                               Comments
+
+28/06/2020  11.50 pm  3.51 am   shrug-init and error check                             passed subset0_[12]
+
+29/06/2020  2.12 pm   5.35 pm   shrug-add and shrug-commit error check                 passed subset0_[34]
+
+10/07/2020  3.14 pm   6.15 pm   complete shrug-commit error check and show function    passed subset0_[56]
+
+13/07/2020  10.45 am  1.30 pm   more debug with commit and show function               passed subset0
+
+13/07/2020  1.45 pm   2.11 pm   finished commit -a option                              passed subset1_1[01]
+
+13/07/2020  2.20 pm   7.24 pm   fix regular expression/ HUGE DEBUGGING for everything  passed subset1_1[0123]
+
+14/07/2020  10.50 am  11.40 am  DEBUGGING for add, rm, commit                          passed subset1_1[01234]
+
+14/07/2020  1.10 pm   2.39 pm   DEBUGGING for rm and error check                       passed subset1_1[012345]
+
+14/07/2020  2.39 pm   4.34 pm   DEBUGGING for rm and finished status                   passed subset1
+
+15/07/2020  11.15 am  12.55 pm  writing test files and comments                        finished subset0 and subset1

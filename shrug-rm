@@ -1,0 +1,204 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ ! -d $root_folder ]; then
+    echo 'shrug-add: error: no .shrug directory containing shrug repository exists'
+    exit 1
+else
+    if [ ! -f ".shrug/.git/COMMIT_EDITMSG" ]; then
+        # file COMMIT_EDITMSG creates when first commit
+        # if not exist 
+        echo 'shrug-rm: error: your repository does not have any commits yet'
+        exit 1
+    else 
+        # rm
+        if [ "$1" != '--force' ] && [ "$1" != '--cached' ]; then
+            requested_rm_filename=$1
+            if [ -z "$requested_rm_filename" ]; then
+                echo 'usage: shrug-rm [--force] [--cached] <filenames>'
+                exit 1
+            fi
+
+            for working_file in $@
+            do
+                # to find current staged file name(sha1sum-ed)
+                staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                last_commit_seq=`cat .shrug/.git/COMMIT_EDITMSG | head -1 | cut -d' ' -f1`
+                # the corresponding file as given argv in last commit
+                repo_file=`cat .shrug/.git/objects/pack/pack-$last_commit_seq.idx | egrep " $working_file$" | cut -d' ' -f1`
+
+                if [ -z "$staged_file" ]; then
+                    flag=1
+                    echo "shrug-rm: error: '$working_file' is not in the shrug repository"
+                    exit 1
+                else
+                    # if last commit file differs from staged file 
+                    if ! diff -q ".shrug/.git/objects/pack/pack-$last_commit_seq.pack/$repo_file" ".shrug/.git/objects/$staged_file" > /dev/null 2>&1; then
+                        # if current working file differs from staged file 
+                        if ! diff -q "$working_file" ".shrug/.git/objects/$staged_file" > /dev/null; then
+                            # set flag 1 as the error occurs
+                            flag=1
+                            echo "shrug-rm: error: '$working_file' in index is different to both working file and repository"
+                            exit 1
+                        else
+                            flag=1
+                            echo "shrug-rm: error: '$working_file' has changes staged in the index"
+                            exit 1
+                        fi
+                    else
+                        # if last commit file differs from current working file
+                        if ! diff -q ".shrug/.git/objects/pack/pack-$last_commit_seq.pack/$repo_file" "$working_file" > /dev/null; then
+                            flag=1
+                            echo "shrug-rm: error: '$working_file' in repository is different to working file"
+                            exit 1
+                        fi
+                    fi
+                fi
+            done
+
+            # if no error occured above then do the rm operation
+            if [ "$flag" != '1' ]; then
+                for working_file in $@
+                do
+                    staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                    # remove corresponding file and file index(sha1sum-ed filename - original filename)
+                    sed -i -e "/$staged_file $working_file/d" ".shrug/.git/index" > /dev/null
+                    rm ".shrug/.git/objects/$staged_file"
+                    rm $working_file
+                done
+            fi
+            exit 0
+        fi
+
+
+        # rm --force
+        if [ "$1" = '--force' ] && [ "$2" != '--cached' ]; then
+            requested_rm_filename=$2
+            if [ -z "$requested_rm_filename" ]; then
+                echo 'usage: shrug-rm [--force] [--cached] <filenames>'
+                exit 1
+            fi
+
+            # for the below parts please read from line 25
+            for working_file in $@
+            do
+                p=`echo $working_file | egrep "^-"`
+                if [ "$p" = '' ]; then
+                    staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                    if [ -z "$staged_file" ]; then
+                        flag=1
+                        echo "shrug-rm: error: '$working_file' is not in the shrug repository"
+                        exit 1
+                    fi
+                fi
+            done
+
+            if [ "$flag" != '1' ]; then
+                for working_file in $@
+                do
+                    p=`echo $working_file | egrep "^-"`
+                    if [ "$p" = '' ]; then
+                        staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`  > /dev/null 2>&1
+                        sed -i -e "/$staged_file $working_file/d" ".shrug/.git/index"  > /dev/null 2>&1
+                        rm ".shrug/.git/objects/$staged_file" > /dev/null 2>&1
+                        rm $working_file > /dev/null 2>&1
+                    fi
+                done
+            fi
+            # for the above parts please read from line 25
+            exit 0
+        fi
+
+        
+        # rm --cached
+        if [ "$1" != '--force' ] && [ "$1" = '--cached' ]; then
+            requested_rm_filename=$2
+            if [ -z "$requested_rm_filename" ]; then
+                echo'usage: shrug-rm [--force] [--cached] <filenames>'
+                exit 1
+            fi
+            
+            for working_file in $@
+            do
+                # flag p to skip option argv then can process file
+                p=`echo $working_file | egrep "^-"`
+                if [ "$p" = '' ]; then
+                    # to find current staged file name(sha1sum-ed)
+                    staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                    last_commit_seq=`cat .shrug/.git/COMMIT_EDITMSG | head -1 | cut -d' ' -f1`
+                    # the corresponding file as given argv in last commit
+                    repo_file=`cat .shrug/.git/objects/pack/pack-$last_commit_seq.idx | egrep " $working_file$" | cut -d' ' -f1`
+
+                    if [ -z "$staged_file" ]; then
+                        flag=1
+                        echo "shrug-rm: error: '$working_file' is not in the shrug repository"
+                        exit 1
+                    else
+                        # if staged file differs from both last commit repo and working file then throw error
+                        if ! diff -q ".shrug/.git/objects/pack/pack-$last_commit_seq.pack/$repo_file" ".shrug/.git/objects/$staged_file" > /dev/null 2>&1; then
+                            if ! diff -q "$working_file" ".shrug/.git/objects/$staged_file" > /dev/null; then
+                                flag=1
+                                echo "shrug-rm: error: '$working_file' in index is different to both working file and repository"
+                                exit 1
+                            fi
+                        fi
+                    fi
+                fi
+            done
+
+            # if no error occured above then do the rm cached operation
+            if [ "$flag" != '1' ]; then
+                for working_file in $@
+                do
+                    p=`echo $working_file | egrep "^-"`
+                    if [ "$p" = '' ]; then
+                        # remove corresponding file and file index(sha1sum-ed filename - original filename)
+                        staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                        sed -i -e "/$staged_file $working_file/d" ".shrug/.git/index" > /dev/null
+                        rm ".shrug/.git/objects/$staged_file"
+                    fi
+                done
+            fi
+            exit 0
+        fi
+
+
+        # rm --force --cached
+        if [ "$1" = '--force' ] && [ "$2" = '--cached' ]; then
+            requested_rm_filename=$3
+            if [ -z "$requested_rm_filename" ]; then
+                echo'usage: shrug-rm [--force] [--cached] <filenames>'
+                exit 1
+            fi
+            
+            # for the below parts please read from line 124
+            for working_file in $@
+            do
+                p=`echo $working_file | egrep "^-"`
+                if [ "$p" = '' ]; then
+                    staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                    if [ -z "$staged_file" ]; then
+                        flag=1
+                        echo "shrug-rm: error: '$working_file' is not in the shrug repository"
+                        exit 1
+                    fi
+                fi
+            done
+
+            if [ "$flag" != '1' ]; then
+                for working_file in $@
+                do
+                    p=`echo $working_file | egrep "^-"`
+                    if [ "$p" = '' ]; then
+                        staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1` > /dev/null 2>&1
+                        sed -i -e "/$staged_file $working_file/d" ".shrug/.git/index"  > /dev/null 2>&1
+                        rm ".shrug/.git/objects/$staged_file" > /dev/null 2>&1
+                    fi
+                done
+            fi
+            # for the above parts please read from line 124
+            exit 0
+        fi
+    fi
+fi

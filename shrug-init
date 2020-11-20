@@ -1,0 +1,49 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ -d "$root_folder" ]
+    then
+        echo 'shrug-init: error: .shrug already exists'
+        exit 1
+else
+    # Initially tried to make everything just like 2041 shrug(git) including folder format and filename generation method
+    # Then found it way much more time-consuming than I thought
+    # The below just follows 2041 shrug folder format and initial file contents
+    mkdir -p "$root_folder/.git"
+    mkdir "$root_folder/.git/refs"
+    mkdir "$root_folder/.git/refs/heads"
+    mkdir "$root_folder/.git/refs/tags"
+    mkdir "$root_folder/.git/objects"
+    mkdir "$root_folder/.git/objects/pack"
+    mkdir "$root_folder/.git/objects/info"
+    mkdir "$root_folder/.git/info"
+    mkdir "$root_folder/.git/hooks"
+    mkdir "$root_folder/.git/branches"
+
+    echo "# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~" > "$root_folder/.git/info/exclude"
+
+    echo "ref: refs/heads/master" > "$root_folder/.git/HEAD"
+
+    echo "Unnamed repository; edit this file 'description' to name the repository." > "$root_folder/.git/description"
+
+    worktree=`pwd`
+    echo "[core]
+	repositoryformatversion = 0
+	fileMode = false
+	bare = false
+	logallrefupdates = true
+	worktree = $worktree
+[user]
+	email = zack@nono.fi
+	name = z5171691
+" > "$root_folder/.git/config"
+
+    echo 'Initialized empty shrug repository in .shrug'
+    exit 0
+fi

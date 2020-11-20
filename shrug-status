@@ -1,0 +1,87 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+if [ ! -d $root_folder ]; then
+    echo 'shrug-add: error: no .shrug directory containing shrug repository exists'
+    exit 1
+else
+    current_working_file_list=`ls`
+
+    staged_file_list=`cat .shrug/.git/index | cut -d ' ' -f2 | tr '\n' ' '`
+
+    last_commit_seq=`cat .shrug/.git/COMMIT_EDITMSG | head -1 | cut -d' ' -f1`
+    last_commit_repo_file_list=`cat .shrug/.git/objects/pack/pack-$last_commit_seq.idx | cut -d ' ' -f2 | tr '\n' ' '`
+
+    # create the filename list need to be check status
+    # 1 current working file names
+    # 2 staged file names
+    # 3 last commit repo file names
+    file_status_iteration_list=`echo $current_working_file_list $staged_file_list $last_commit_repo_file_list | tr ' ' '\n' | sort | uniq | sort`
+
+    for working_file in $file_status_iteration_list
+    do 
+        # flag p to check if it is current working file 
+        p=`cat .shrug/.git/index | cut -d ' ' -f2 | egrep "^$working_file$"`
+        # flag q to check if it is in last repo
+        q=`cat .shrug/.git/objects/pack/pack-$last_commit_seq.idx | cut -d ' ' -f2 | egrep "^$working_file$"`
+
+        if [ -z "$p" ]; then
+            if [ -z "$q" ]; then
+                # if not current working and not in last repo
+                echo "$working_file - untracked"
+            else
+                if ! test -f "$working_file"; then
+                    # if not current working but in last repo and file not exists
+                    echo "$working_file - deleted"
+                else
+                    # if not current working but in last repo and file exists
+                    echo "$working_file - untracked"
+                fi
+            fi
+        else
+            if [ -z "$q" ]; then
+                staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                if diff -q "$working_file" ".shrug/.git/objects/$staged_file" > /dev/null 2>&1; then
+                    # if current working but not in last repo and in current index
+                    echo "$working_file - added to index"
+                else
+                    if test -f "$working_file"; then
+                        # if current working but not in last repo and in current index but current file is not the same as the staged one
+                        echo "$working_file - added to index, file changed"
+                    else
+                        # if current working but not in last repo and in current index but current file not exists
+                        echo "$working_file - added to index, file deleted"
+                    fi
+                fi
+            else
+                if ! test -f "$working_file"; then
+                    # both in current index and last repo but file not exists
+                    echo "$working_file - file deleted"
+                else
+                    staged_file=`cat .shrug/.git/index | egrep " $working_file$" | cut -d' ' -f1`
+                    last_commit_seq=`cat .shrug/.git/COMMIT_EDITMSG | head -1 | cut -d' ' -f1`
+                    repo_file=`cat .shrug/.git/objects/pack/pack-$last_commit_seq.idx | egrep " $working_file$" | cut -d' ' -f1`
+
+                    if diff -q "$working_file" ".shrug/.git/objects/pack/pack-$last_commit_seq.pack/$repo_file" > /dev/null 2>&1; then
+                        # working file still in index and nothing changes since last repo
+                        echo "$working_file - same as repo"
+                    else
+                        if diff -q "$working_file" ".shrug/.git/objects/$staged_file" > /dev/null 2>&1; then
+                            # working file still in index changes made since last repo and already staged(in index)
+                            echo "$working_file - file changed, changes staged for commit"
+                        else
+                            if diff -q ".shrug/.git/objects/$staged_file" ".shrug/.git/objects/pack/pack-$last_commit_seq.pack/$repo_file" > /dev/null 2>&1; then
+                                # working file still in index changes made since last repo and has not staged(not in index)
+                                echo "$working_file - file changed, changes not staged for commit"
+                            else
+                                # working file still in index changes made since last repo and already staged(in index) but working file changes after add operation
+                                echo "$working_file - file changed, different changes staged for commit"
+                            fi
+                        fi
+                    fi    
+                fi
+            fi
+        fi
+    done
+fi

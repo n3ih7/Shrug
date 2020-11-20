@@ -1,0 +1,12 @@
+#!/bin/dash
+
+root_folder='.shrug'
+
+FILE=$root_folder/.git/COMMIT_EDITMSG
+
+if test -f "$FILE"; then
+    cat $FILE
+else 
+    echo "shrug-log: error: your repository does not have any commits yet"
+    exit 1
+fi
